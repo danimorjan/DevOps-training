@@ -1,0 +1,49 @@
+#!/bin/bash
+
+sudo yum install java-11-amazon-corretto -y
+
+curl -LOJ https://github.com/msg-CareerPaths/aws-devops-demo-app/releases/download/v0.0.1/online-shop-v0.0.1.jar
+
+sudo groupadd -r appmgr
+
+sudo useradd -r -s /bin/false -g appmgr jvmapps
+
+sudo mkdir -p /opt/shop
+
+sudo mv online-shop-v0.0.1.jar /opt/shop/
+
+sudo chown -R jvmapps:appmgr /opt/shop
+
+cat <<'EOF' | sudo tee /etc/systemd/system/shop.service
+[Unit]
+Description=Manage Java service
+
+[Service]
+WorkingDirectory=/opt/shop
+ExecStart=/bin/java -Xms128m -Xmx256m -jar online-shop-v0.0.1.jar
+User=jvmapps
+Type=simple
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo mkdir /etc/systemd/system/shop.service.d
+
+cat <<'EOF' | sudo tee /etc/systemd/system/shop.service.d/override.conf
+[Service]
+Environment="SPRING_DATASOURCE_USERNAME=postgres"
+Environment="SPRING_DATASOURCE_PASSWORD=postgres"
+Environment="SPRING_DATASOURCE_URL=jdbc:postgresql://online-shop-db.cx862c4ee62q.us-east-1.rds.amazonaws.com:5432/postgres"
+Environment="SPRING_SESSION_STORETYPE=redis"
+Environment="SPRING_REDIS_HOST=shop-cache.wzoqrj.ng.0001.use1.cache.amazonaws.com"
+Environment="SPRING_REDIS_PORT=6379"
+Environment="SPRING_SESSION_REDIS_CONFIGUREACTION=none"
+EOF
+
+sudo systemctl daemon-reload
+
+sudo systemctl enable shop
+sudo systemctl start shop.service
