@@ -1,0 +1,49 @@
+#!/bin/bash
+
+sudo yum install java-11-amazon-corretto -y
+
+curl -LOJ "${jar_url}"
+
+sudo groupadd -r appmgr
+
+sudo useradd -r -s /bin/false -g appmgr jvmapps
+
+sudo mkdir -p /opt/shop
+
+sudo mv online-shop-v0.0.1.jar /opt/shop/
+
+sudo chown -R jvmapps:appmgr /opt/shop
+
+cat <<'EOF' | sudo tee /etc/systemd/system/shop.service
+[Unit]
+Description=Manage Java service
+
+[Service]
+WorkingDirectory=/opt/shop
+ExecStart=/bin/java -Xms128m -Xmx256m -jar online-shop-v0.0.1.jar
+User=jvmapps
+Type=simple
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo mkdir /etc/systemd/system/shop.service.d
+
+cat <<EOF | sudo tee /etc/systemd/system/shop.service.d/override.conf
+[Service]
+Environment="SPRING_DATASOURCE_USERNAME=postgres"
+Environment="SPRING_DATASOURCE_PASSWORD=postgres"
+Environment="SPRING_DATASOURCE_URL=${db_endpoint}"
+Environment="SPRING_SESSION_STORETYPE=redis"
+Environment="SPRING_REDIS_HOST=${cache_endpoint}"
+Environment="SPRING_REDIS_PORT=6379"
+Environment="SPRING_SESSION_REDIS_CONFIGUREACTION=none"
+EOF
+
+sudo systemctl daemon-reload
+
+sudo systemctl enable shop
+sudo systemctl start shop.service
