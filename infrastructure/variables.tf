@@ -13,6 +13,11 @@ variable "rds_instance_type" {
   default     = "db.t3.micro"
 }
 
+variable "image_tag" {
+  description = "Docker image tag"
+  default     = "bad940b1ec09bcce65fe3af2e43818f952d432cb"
+}
+
 variable "elasticache_instance_type" {
   description = "Instance type for ElastiCache"
   default     = "cache.t3.micro"
@@ -25,8 +30,10 @@ variable "app_version" {
 }
 
 locals {
-  db_url  = "jdbc:postgresql://${aws_db_instance.online_shop_db.endpoint}/postgres"
-  jar_url = "https://github.com/msg-CareerPaths/aws-devops-demo-app/releases/download/${var.app_version}/online-shop-${var.app_version}.jar"
+  db_url    = "jdbc:postgresql://${aws_db_instance.online_shop_db.endpoint}/postgres"
+  repo_url  = aws_ecr_repository.shop.repository_url
+  redis_url = aws_elasticache_cluster.online_shop_cache.cache_nodes[0].address
+  jar_url   = "https://github.com/msg-CareerPaths/aws-devops-demo-app/releases/download/${var.app_version}/online-shop-${var.app_version}.jar"
 }
 
 output "database_endpoint" {
