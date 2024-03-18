@@ -2,7 +2,7 @@ resource "aws_db_instance" "online_shop_db" {
   identifier                  = "online-shop-db"
   allocated_storage           = 20
   engine                      = "postgres"
-  engine_version              = "15.4"
+  engine_version              = "15.5"
   allow_major_version_upgrade = true
   instance_class              = var.rds_instance_type
   db_name                     = "postgres"
@@ -16,7 +16,7 @@ resource "aws_db_instance" "online_shop_db" {
   lifecycle {
     prevent_destroy = true
   }
-  
+
   tags = {
     Name = "online-shop-db"
   }

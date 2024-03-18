@@ -22,6 +22,10 @@ resource "aws_iam_instance_profile" "ec2_pull_ecr_profile" {
   role = aws_iam_role.ec2_pull_ecr_role.name
 }
 
+resource "aws_iam_instance_profile" "ec2_ecs_profile" {
+  name = "ec2-ecs-profile"
+  role = aws_iam_role.ec2_ecs_role.name
+}
 
 resource "aws_launch_template" "online_shop_launch_template" {
   name_prefix   = "online-shop-launch-template"
@@ -40,18 +44,35 @@ resource "aws_launch_template" "online_shop_launch_template" {
   vpc_security_group_ids = [aws_security_group.allow_tcp.id]
 }
 
+data "aws_ssm_parameter" "ecs_node_ami" {
+  name = "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+}
+
+resource "aws_launch_template" "online_shop_launch_template_ecs" {
+  name_prefix   = "online-shop-launch-template"
+  image_id      = data.aws_ssm_parameter.ecs_node_ami.value
+  instance_type = var.ec2_instance_type
+  key_name      = var.ssh_key_name
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_ecs_profile.name
+  }
+  vpc_security_group_ids = [aws_security_group.allow_tcp.id]
+
+  user_data = base64encode(templatefile("ecsuserdata.tftpl", {}))
+}
+
 resource "aws_autoscaling_group" "online_shop_asg" {
   name = "online-shop-asg"
   launch_template {
-    id      = aws_launch_template.online_shop_launch_template.id
+    id      = aws_launch_template.online_shop_launch_template_ecs.id
     version = "$Latest"
   }
   vpc_zone_identifier = [aws_subnet.public_subnet1.id, aws_subnet.public_subnet2.id]
-  min_size            = 0
-  desired_capacity    = 0
-  max_size            = 0
+  min_size            = 1
+  desired_capacity    = 1
+  max_size            = 2
   health_check_type   = "ELB"
-  target_group_arns   = [aws_lb_target_group.shop_target_group.arn]
+  #target_group_arns   = [aws_lb_target_group.shop_target_group.arn]
 }
 
 resource "aws_lb_target_group" "shop_target_group" {
@@ -59,6 +80,20 @@ resource "aws_lb_target_group" "shop_target_group" {
   port     = 8080
   protocol = "HTTP"
   vpc_id   = aws_vpc.online-shop.id
+
+  health_check {
+    path     = "/health"
+    protocol = "HTTP"
+    matcher  = "200"
+  }
+}
+
+resource "aws_lb_target_group" "shop_target_group_ecs" {
+  name        = "online-shop-target-group-ecs"
+  port        = 8080
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.online-shop.id
 
   health_check {
     path     = "/health"
@@ -84,13 +119,44 @@ resource "aws_lb" "online_shop_lb" {
   }
 }
 
-resource "aws_lb_listener" "http_listener" {
+
+resource "aws_lb_listener" "http_listener_ecs" {
   load_balancer_arn = aws_lb.online_shop_lb.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.shop_target_group.arn
+    target_group_arn = aws_lb_target_group.shop_target_group_ecs.arn
+  }
+}
+
+resource "aws_ecs_capacity_provider" "ecs_capacity_provider" {
+  name = "shop-ecs-capacity-provider"
+
+  auto_scaling_group_provider {
+    auto_scaling_group_arn = aws_autoscaling_group.online_shop_asg.arn
+
+    managed_termination_protection = "DISABLED"
+
+    managed_scaling {
+      maximum_scaling_step_size = 2
+      minimum_scaling_step_size = 1
+      status                    = "ENABLED"
+      target_capacity           = 100
+    }
+  }
+}
+
+
+resource "aws_ecs_cluster_capacity_providers" "main" {
+  cluster_name = aws_ecs_cluster.shop.name
+
+  capacity_providers = [aws_ecs_capacity_provider.ecs_capacity_provider.name]
+
+  default_capacity_provider_strategy {
+    base              = 1
+    weight            = 100
+    capacity_provider = aws_ecs_capacity_provider.ecs_capacity_provider.name
   }
 }

@@ -47,3 +47,24 @@ resource "aws_iam_policy" "ecr_allow_push_policy" {
     ]
   })
 }
+
+resource "aws_iam_policy" "ssm_policy" {
+  name        = "SSMParameterAccessPolicy"
+  description = "Allows access to AWS Systems Manager Parameter Store for ECS tasks"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ssm:GetParameters",
+          "ssm:GetParameter",
+          "ssm:GetParametersByPath",
+        ],
+        Resource = "*",
+      },
+    ],
+  })
+}
+
