@@ -30,10 +30,13 @@ variable "app_version" {
 }
 
 locals {
-  db_url    = "jdbc:postgresql://${aws_db_instance.online_shop_db.endpoint}/postgres"
-  repo_url  = aws_ecr_repository.shop.repository_url
-  redis_url = aws_elasticache_cluster.online_shop_cache.cache_nodes[0].address
-  jar_url   = "https://github.com/msg-CareerPaths/aws-devops-demo-app/releases/download/${var.app_version}/online-shop-${var.app_version}.jar"
+  db_url                         = "jdbc:postgresql://${aws_db_instance.online_shop_db.endpoint}/postgres"
+  repo_url                       = aws_ecr_repository.shop.repository_url
+  redis_url                      = aws_elasticache_cluster.online_shop_cache.cache_nodes[0].address
+  ec2_container_service_role_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+  task_exec_role                 = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  admin_role                     = "arn:aws:iam::aws:policy/AdministratorAccess"
+  jar_url                        = "https://github.com/msg-CareerPaths/aws-devops-demo-app/releases/download/${var.app_version}/online-shop-${var.app_version}.jar"
 }
 
 output "database_endpoint" {
@@ -44,6 +47,10 @@ output "cache_endpoint" {
   value = aws_elasticache_cluster.online_shop_cache.cache_nodes[0].address
 }
 
-output "application_base_url" {
-  value = "http://${aws_lb.online_shop_lb.dns_name}"
+output "ssm_dbpassword_arn" {
+  value = aws_ssm_parameter.db_password.arn
 }
+
+# output "application_base_url" {
+#   value = "http://${aws_lb.online_shop_lb.dns_name}"
+# }

@@ -139,6 +139,14 @@ resource "aws_vpc_security_group_ingress_rule" "allow_tcp_5432" {
   to_port                      = 5432
 }
 
+resource "aws_vpc_security_group_ingress_rule" "allow_tcp_5432_for_ecs_sg" {
+  security_group_id            = aws_security_group.online_shop_db.id
+  referenced_security_group_id = aws_security_group.ecs_task.id
+  from_port                    = 5432
+  ip_protocol                  = "tcp"
+  to_port                      = 5432
+}
+
 resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4_db" {
   security_group_id = aws_security_group.online_shop_db.id
   cidr_ipv4         = "0.0.0.0/0"
@@ -189,6 +197,28 @@ resource "aws_vpc_security_group_ingress_rule" "allow_tcp_80_all" {
 
 resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4_alb" {
   security_group_id = aws_security_group.online_shop_alb.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
+
+resource "aws_security_group" "ecs_task" {
+  name        = "ecs-task"
+  description = "Security group for ecs"
+  vpc_id      = aws_vpc.online-shop.id
+
+  tags = {
+    Name = "ecs_sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_from_inside_vpc" {
+  security_group_id = aws_security_group.ecs_task.id
+  cidr_ipv4         = aws_vpc.online-shop.cidr_block
+  ip_protocol       = "-1"
+}
+
+resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv4_ecs" {
+  security_group_id = aws_security_group.ecs_task.id
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
 }
