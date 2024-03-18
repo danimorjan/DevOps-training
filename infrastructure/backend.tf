@@ -17,15 +17,25 @@ data "aws_ami" "amazon_linux_2" {
   }
 }
 
+resource "aws_iam_instance_profile" "ec2_pull_ecr_profile" {
+  name = "ec2-pull-ecr-profile"
+  role = aws_iam_role.ec2_pull_ecr_role.name
+}
+
+
 resource "aws_launch_template" "online_shop_launch_template" {
   name_prefix   = "online-shop-launch-template"
   image_id      = data.aws_ami.amazon_linux_2.id
   instance_type = var.ec2_instance_type
-  user_data = base64encode(templatefile("userdata.tftpl", {
+  user_data = base64encode(templatefile("dockeruserdata.tftpl", {
     db_endpoint    = local.db_url,
-    cache_endpoint = aws_elasticache_cluster.online_shop_cache.cache_nodes[0].address,
-    jar_url        = local.jar_url
+    cache_endpoint = local.redis_url,
+    image_tag      = var.image_tag,
+    repo_url       = local.repo_url
   }))
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_pull_ecr_profile.name
+  }
   key_name               = var.ssh_key_name
   vpc_security_group_ids = [aws_security_group.allow_tcp.id]
 }
@@ -56,6 +66,7 @@ resource "aws_lb_target_group" "shop_target_group" {
     matcher  = "200"
   }
 }
+
 resource "aws_lb" "online_shop_lb" {
   name               = "online-shop-lb"
   load_balancer_type = "application"
