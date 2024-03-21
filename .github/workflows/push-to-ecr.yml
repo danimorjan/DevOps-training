@@ -6,6 +6,8 @@ env:
   AWS_REGION: "us-east-1"
   ECR_REPO: "shop"
   AWS_ACCOUNT_ID: "533267116580"
+  BUCKET_NAME: "onlie-shop-frontend"
+  CLOUDFRONT_DISTRIBUTION_ID: "E17Z0ZZ33VWQYV"
 
 permissions:
   id-token: write
@@ -22,6 +24,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y awscli
+
+      - name: Install Node.js and npm
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'    
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -57,5 +64,18 @@ jobs:
           cd infrastructure
           terraform init
           terraform apply -auto-approve -var "image_tag=${GITHUB_SHA}"
-      
+
+      - name: Build UI
+        working-directory: DemoAppShop/ui
+        run: |
+          npm install
+          npm run build
+          
+      - name: Upload UI assets to S3
+        run: |
+          aws s3 sync build s3://${{ env.BUCKET_NAME }}
+
+      - name: Create CloudFront invalidation
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ env.CLOUDFRONT_DISTRIBUTION_ID }} --paths '/*'
 
