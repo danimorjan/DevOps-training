@@ -15,7 +15,7 @@ variable "rds_instance_type" {
 
 variable "image_tag" {
   description = "Docker image tag"
-  default     = "bad940b1ec09bcce65fe3af2e43818f952d432cb"
+  default     = "6555c32c2f0a73f027fb3f4cd9ad5eba98aa2fb6"
 }
 
 variable "elasticache_instance_type" {
