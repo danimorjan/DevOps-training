@@ -68,3 +68,28 @@ resource "aws_iam_policy" "ssm_policy" {
   })
 }
 
+resource "aws_s3_bucket_policy" "cloudfront_access_policy" {
+  bucket = aws_s3_bucket.online_shop_bucket.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowCloudFrontServicePrincipalReadWrite"
+      Effect    = "Allow"
+      Principal = {
+        Service = "cloudfront.amazonaws.com"
+      }
+      Action    = [
+        "s3:GetObject",
+        "s3:PutObject"
+      ]
+      Resource  = "${aws_s3_bucket.online_shop_bucket.arn}/*"
+      Condition = {
+        StringEquals = {
+          "AWS:SourceArn" = "arn:aws:cloudfront::533267116580:distribution/E17Z0ZZ33VWQYV"
+        }
+      }
+    }]
+  })
+}
+
