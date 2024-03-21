@@ -77,7 +77,7 @@ resource "aws_cloudfront_cache_policy" "shop_s3_cache_policy" {
     cookies_config {
       cookie_behavior = "whitelist"
       cookies {
-        items = ["SESSION"]
+        items = ["JSESSIONID","SESSION"]
       }
     }
     headers_config {
