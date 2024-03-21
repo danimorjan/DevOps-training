@@ -72,6 +72,7 @@ jobs:
           npm run build
           
       - name: Upload UI assets to S3
+        working-directory: DemoAppShop/ui
         run: |
           aws s3 sync build s3://${{ env.BUCKET_NAME }}
 
