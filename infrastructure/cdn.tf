@@ -21,6 +21,12 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   is_ipv6_enabled     = true
   default_root_object = "index.html"
 
+  custom_error_response {
+    error_code            = 403
+    response_code         = 200
+    response_page_path    = "/index.html"
+    error_caching_min_ttl = 0
+  }
 
   default_cache_behavior {
     allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
@@ -77,7 +83,7 @@ resource "aws_cloudfront_cache_policy" "shop_s3_cache_policy" {
     cookies_config {
       cookie_behavior = "whitelist"
       cookies {
-        items = ["JSESSIONID","SESSION"]
+        items = ["JSESSIONID", "SESSION"]
       }
     }
     headers_config {
